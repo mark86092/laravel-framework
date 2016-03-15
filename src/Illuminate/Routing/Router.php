@@ -110,6 +110,7 @@ class Router implements RegistrarContract
     {
         $this->events = $events;
         $this->routes = new RouteCollection;
+        $this->groupStack = new RouterGroupStack;
         $this->container = $container ?: new Container;
 
         $this->bind('_missing', function ($v) {
@@ -248,7 +249,7 @@ class Router implements RegistrarContract
         // First, we will check to see if a controller prefix has been registered in
         // the route group. If it has, we will need to prefix it before trying to
         // reflect into the class instance and pull out the method for routing.
-        if (! empty($this->groupStack)) {
+        if ($this->groupStack->has()) {
             $prepended = $this->prependGroupUses($controller);
         }
 
@@ -397,7 +398,7 @@ class Router implements RegistrarContract
         // run the callback, we will pop the attributes off of this group stack.
         call_user_func($callback, $this);
 
-        array_pop($this->groupStack);
+        $this->groupStack->pop();
     }
 
     /**
@@ -408,11 +409,11 @@ class Router implements RegistrarContract
      */
     protected function updateGroupStack(array $attributes)
     {
-        if (! empty($this->groupStack)) {
-            $attributes = $this->mergeGroup($attributes, end($this->groupStack));
+        if ($this->groupStack->has()) {
+            $attributes = $this->mergeWithLastGroup($attributes);
         }
 
-        $this->groupStack[] = $attributes;
+        $this->groupStack->push($attributes);
     }
 
     /**
@@ -423,7 +424,7 @@ class Router implements RegistrarContract
      */
     public function mergeWithLastGroup($new)
     {
-        return $this->mergeGroup($new, end($this->groupStack));
+        return RouterGroupStack::mergeGroup($new, $this->groupStack->getLast());
     }
 
     /**
@@ -435,60 +436,7 @@ class Router implements RegistrarContract
      */
     public static function mergeGroup($new, $old)
     {
-        $new['namespace'] = static::formatUsesPrefix($new, $old);
-
-        $new['prefix'] = static::formatGroupPrefix($new, $old);
-
-        if (isset($new['domain'])) {
-            unset($old['domain']);
-        }
-
-        $new['where'] = array_merge(
-            isset($old['where']) ? $old['where'] : [],
-            isset($new['where']) ? $new['where'] : []
-        );
-
-        if (isset($old['as'])) {
-            $new['as'] = $old['as'].(isset($new['as']) ? $new['as'] : '');
-        }
-
-        return array_merge_recursive(Arr::except($old, ['namespace', 'prefix', 'where', 'as']), $new);
-    }
-
-    /**
-     * Format the uses prefix for the new group attributes.
-     *
-     * @param  array  $new
-     * @param  array  $old
-     * @return string|null
-     */
-    protected static function formatUsesPrefix($new, $old)
-    {
-        if (isset($new['namespace'])) {
-            return isset($old['namespace'])
-                    ? trim($old['namespace'], '\\').'\\'.trim($new['namespace'], '\\')
-                    : trim($new['namespace'], '\\');
-        }
-
-        return isset($old['namespace']) ? $old['namespace'] : null;
-    }
-
-    /**
-     * Format the prefix for the new group attributes.
-     *
-     * @param  array  $new
-     * @param  array  $old
-     * @return string|null
-     */
-    protected static function formatGroupPrefix($new, $old)
-    {
-        $oldPrefix = isset($old['prefix']) ? $old['prefix'] : null;
-
-        if (isset($new['prefix'])) {
-            return trim($oldPrefix, '/').'/'.trim($new['prefix'], '/');
-        }
-
-        return $oldPrefix;
+        return RouterGroupStack::mergeGroup($new, $old);
     }
 
     /**
@@ -498,13 +446,7 @@ class Router implements RegistrarContract
      */
     public function getLastGroupPrefix()
     {
-        if (! empty($this->groupStack)) {
-            $last = end($this->groupStack);
-
-            return isset($last['prefix']) ? $last['prefix'] : '';
-        }
-
-        return '';
+        return $this->groupStack->getLast('prefix', '');
     }
 
     /**
@@ -544,7 +486,7 @@ class Router implements RegistrarContract
         // If we have groups that need to be merged, we will merge them now after this
         // route has already been created and is ready to go. After we're done with
         // the merge we will be ready to return the route back out to the caller.
-        if ($this->hasGroupStack()) {
+        if ($this->groupStack->has()) {
             $this->mergeGroupAttributesIntoRoute($route);
         }
 
@@ -637,7 +579,7 @@ class Router implements RegistrarContract
         // Here we'll merge any group "uses" statement if necessary so that the action
         // has the proper clause for this property. Then we can simply set the name
         // of the controller on the action and return the action array for usage.
-        if (! empty($this->groupStack)) {
+        if ($this->groupStack->has()) {
             $action['uses'] = $this->prependGroupUses($action['uses']);
         }
 
@@ -657,7 +599,7 @@ class Router implements RegistrarContract
      */
     protected function prependGroupUses($uses)
     {
-        $group = end($this->groupStack);
+        $group = $this->groupStack->getLast();
 
         return isset($group['namespace']) && strpos($uses, '\\') !== 0 ? $group['namespace'].'\\'.$uses : $uses;
     }
@@ -1097,7 +1039,7 @@ class Router implements RegistrarContract
      */
     public function hasGroupStack()
     {
-        return ! empty($this->groupStack);
+        return $this->groupStack->has();
     }
 
     /**
@@ -1107,7 +1049,7 @@ class Router implements RegistrarContract
      */
     public function getGroupStack()
     {
-        return $this->groupStack;
+        return $this->groupStack->get();
     }
 
     /**
