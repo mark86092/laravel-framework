@@ -949,6 +949,7 @@ class RoutingRouteTest extends PHPUnit_Framework_TestCase
             $phpunit->assertEquals('taylor', $foo->value);
             $phpunit->assertNull($year);
             $phpunit->assertInstanceOf(RoutingTestUserModel::class, $bar);
+            $phpunit->assertNull($bar->value);
 
             return 'hello';
         });
@@ -975,6 +976,25 @@ class RoutingRouteTest extends PHPUnit_Framework_TestCase
             $phpunit->assertEquals('taylor', $foo->value);
             $phpunit->assertEquals(2015, $year);
             $phpunit->assertInstanceOf(RoutingTestTeamModel::class, $bar);
+
+            return 'hello';
+        });
+
+        // this makes sure the callback is called
+        $this->assertEquals('hello', $router->dispatch(Request::create('hello/taylor', 'GET'))->getContent());
+    }
+
+    public function testImplicitBindingsMixAll()
+    {
+        $phpunit = $this;
+        $router = $this->getRouter();
+        $router->get('hello/{foo}/{year?}/{bar?}', function (Request $request, RoutingTestUserModel $foo, $year = null, RoutingTestUserModel $bar = null) use ($phpunit) {
+
+            $phpunit->assertInstanceOf(Request::class, $request);
+            $phpunit->assertInstanceOf(RoutingTestUserModel::class, $foo);
+            $phpunit->assertEquals('taylor', $foo->value);
+            $phpunit->assertNull($year);
+            $phpunit->assertInstanceOf(RoutingTestUserModel::class, $bar);
 
             return 'hello';
         });
