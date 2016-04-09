@@ -220,6 +220,10 @@ class Validator implements ValidatorContract
             if ($value instanceof File) {
                 $this->files[$key] = $value;
 
+                /*
+                 *  CHI: 這裡的 $key 不一定會在 $data 裡面有
+                 *  因為 $key = ($arrayKey) ? "$arrayKey.$key" : $key; 讓 $key 變了
+                 */
                 unset($data[$key]);
             } elseif (is_array($value)) {
                 $this->parseData($value, $key);
