@@ -7,6 +7,7 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\Access\AuthenticationException;
 use Illuminate\Http\Exception\HttpResponseException;
 use Symfony\Component\Debug\Exception\FlattenException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -100,6 +101,8 @@ class Handler implements ExceptionHandlerContract
             return $e->getResponse();
         } elseif ($e instanceof ModelNotFoundException) {
             $e = new NotFoundHttpException($e->getMessage(), $e);
+        } elseif ($e instanceof AuthenticationException) {
+            return $this->convertAuthenticationExceptionToResponse($e, $request);
         } elseif ($e instanceof AuthorizationException) {
             $e = new HttpException(403, $e->getMessage());
         } elseif ($e instanceof ValidationException) {
@@ -156,6 +159,22 @@ class Handler implements ExceptionHandlerContract
         } else {
             return $this->convertExceptionToResponse($e);
         }
+    }
+
+    /**
+     * Create a response object from the given authentication exception.
+     *
+     * @param  \Illuminate\Auth\Access\AuthenticationException  $e
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    protected function convertAuthenticationExceptionToResponse(AuthenticationException $e, $request)
+    {
+        if (($request->ajax() && ! $request->pjax()) || $request->wantsJson()) {
+            return response()->json('Unauthorized', 401);
+        }
+
+        return redirect()->guest('login');
     }
 
     /**
