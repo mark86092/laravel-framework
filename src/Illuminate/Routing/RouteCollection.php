@@ -15,6 +15,7 @@ class RouteCollection implements Countable, IteratorAggregate
 {
     /**
      * An array of the routes keyed by method.
+     * 以 method 為 key 的 routes 集合.
      *
      * @var array
      */
@@ -22,6 +23,7 @@ class RouteCollection implements Countable, IteratorAggregate
 
     /**
      * An flattened array of all of the routes.
+     * 所有的 routes 集合.
      *
      * @var array
      */
@@ -29,6 +31,7 @@ class RouteCollection implements Countable, IteratorAggregate
 
     /**
      * A look-up table of routes by their names.
+     * 以名稱為 key 的 routes 集合.
      *
      * @var array
      */
@@ -36,6 +39,7 @@ class RouteCollection implements Countable, IteratorAggregate
 
     /**
      * A look-up table of routes by controller action.
+     * 以 action 的 use 為 key 的 routes 集合.
      *
      * @var array
      */

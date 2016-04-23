@@ -38,6 +38,11 @@ class Route
 
     /**
      * The route action array.
+     * 這個 array 包含
+     * use: 
+     * as: route 的名稱
+     * controller: route 的控制器，可以反向從控制器取得 route
+     * middleware:.
      *
      * @var array
      */
